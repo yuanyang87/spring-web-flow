@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<flow xmlns="http://www.springframework.org/schema/webflow"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.springframework.org/schema/webflow 
+  http://www.springframework.org/schema/webflow/spring-webflow-2.0.xsd">
+
+    <input name="order" required="true"/>
+    
+    <!-- Customer -->
+    <!-- 程序入口第一个位置 -->
+    <view-state id="welcome">
+        <transition on="phoneEntered" to="lookupCustomer"/>
+        <transition on="cancel" to="cancel"/><!--这个好像没看到耶...-->
+    </view-state>
+    
+    <action-state id="lookupCustomer">
+        <!--查找是否有这个号码 9725551234 -->
+        <evaluate result="order.customer" expression=
+            "pizzaFlowActions.lookupCustomer(requestParameters.phoneNumber)" />
+        <!--如果没有,则由抛出的异常进行注册-->
+        <transition to="registrationForm" on-exception=
+            "com.springinaction.pizza.service.CustomerNotFoundException" />
+        <transition to="customerReady" />
+    </action-state>
+    
+    <view-state id="registrationForm" model="order" popup="true" >
+        <!--注册时,将之前输入的电话写入表单-->
+        <on-entry>
+          <evaluate expression=
+              "order.customer.phoneNumber = requestParameters.phoneNumber" />
+        </on-entry>
+        <transition on="submit" to="checkDeliveryArea" />
+        <transition on="cancel" to="cancel" />
+    </view-state>
+
+    <!--检查地区编号 75075-->
+    <decision-state id="checkDeliveryArea">
+      <if test="pizzaFlowActions.checkDeliveryArea(order.customer.zipCode)" 
+          then="addCustomer" 
+          else="deliveryWarning"/>
+    </decision-state>
+    
+    <view-state id="deliveryWarning">
+        <transition on="accept" to="addCustomer" />
+        <transition on="cancel" to="cancel" />
+    </view-state>
+    
+    <action-state id="addCustomer">
+        <evaluate expression="pizzaFlowActions.addCustomer(order.customer)" />
+        <transition to="customerReady" />
+    </action-state>
+            
+    <!-- End state -->
+    <end-state id="cancel" />
+    <end-state id="customerReady" />
+</flow>
